@@ -211,6 +211,7 @@ body {
     border-width: 1px;
     font-size: 9pt;
     height: auto;
+    print-color-adjust: exact;
 
     th, td {
       padding: .12rem .2rem;

@@ -253,6 +253,7 @@ const render = () => {
     if (next < 0 || next >= inputs.length) return
     e.preventDefault()
     inputs[next].focus()
+    if (inputs[next].value) inputs[next].select()
   }
 
   sheet.oninput = (e) => {

@@ -66,6 +66,9 @@ body {
     padding: .35rem .5rem;
     background: var(--paper);
     min-width: 8rem;
+    height: 2.25rem;
+    line-height: 1.2;
+    box-sizing: border-box;
   }
 
   [name=employee] { min-width: 12rem }

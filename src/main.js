@@ -237,6 +237,9 @@ const render = () => {
     writeSheet(t.calendar, state.year, state.month, dumpSheet(sheet))
 
   emp.value = state.employee
+  emp.onclick = () => {
+    if (emp.value) emp.select()
+  }
   emp.oninput = (e) => {
     state.employee = e.target.value
     localStorage.setItem(employeeKey, state.employee)
@@ -254,6 +257,11 @@ const render = () => {
     e.preventDefault()
     inputs[next].focus()
     if (inputs[next].value) inputs[next].select()
+  }
+
+  sheet.onclick = (e) => {
+    if (!e.target.matches('input[name]') || !e.target.value) return
+    e.target.select()
   }
 
   sheet.oninput = (e) => {

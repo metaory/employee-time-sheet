@@ -13,8 +13,11 @@ import {
 } from './sheet.js'
 
 const firstKey = (cal, y, m) => `timesheet:firstDay:${cal}:${y}-${m}`
+const sheetKey = (cal, y, m) => `timesheet:sheet:${cal}:${y}-${m}`
+const viewKey = (cal) => `timesheet:view:${cal}`
 const localeKey = 'timesheet:locale'
 const themeKey = 'timesheet:theme'
+const employeeKey = 'timesheet:employee'
 
 const loadFirst = (cal, y, m) => {
   const saved = localStorage.getItem(firstKey(cal, y, m))
@@ -36,16 +39,41 @@ const applyTheme = (theme) => {
   document.documentElement.dataset.theme = theme
 }
 
+const dumpSheet = (root) =>
+  Object.fromEntries(
+    [...root.querySelectorAll('input[name]')].flatMap((el) =>
+      el.value ? [[el.name, el.value]] : []),
+  )
+
+const readSheet = (cal, y, m) =>
+  JSON.parse(localStorage.getItem(sheetKey(cal, y, m)) ?? '{}')
+
+const writeSheet = (cal, y, m, data) => {
+  const clean = Object.fromEntries(Object.entries(data).filter(([, v]) => v))
+  const key = sheetKey(cal, y, m)
+  if (Object.keys(clean).length) localStorage.setItem(key, JSON.stringify(clean))
+  else localStorage.removeItem(key)
+}
+
+const saveView = (cal, year, month) =>
+  localStorage.setItem(viewKey(cal), JSON.stringify({ year, month }))
+
+const loadView = (cal) => {
+  const { year, month } = JSON.parse(localStorage.getItem(viewKey(cal)) ?? 'null') ?? {}
+  return Number.isInteger(year) && Number.isInteger(month) ? { year, month } : null
+}
+
 applyTheme(loadTheme())
 
 const boot = localeOf(loadLocale())
 const today = todayParts(boot.calendar)
+const view = loadView(boot.calendar) ?? today
 
 const state = {
-  employee: '',
-  year: today.year,
-  month: today.month,
-  firstWeekday: loadFirst(boot.calendar, today.year, today.month),
+  employee: localStorage.getItem(employeeKey) ?? '',
+  year: view.year,
+  month: view.month,
+  firstWeekday: loadFirst(boot.calendar, view.year, view.month),
   locale: loadLocale(),
   theme: loadTheme(),
 }
@@ -71,10 +99,16 @@ const dayInputs = (sheet) =>
     return +pa[2] - +pb[2] || fieldRank[pa[1]] - fieldRank[pb[1]]
   })
 
+const persistSheet = (calendar, year, month) => {
+  const sheet = document.querySelector('#app .sheet')
+  if (sheet) writeSheet(calendar, year, month, dumpSheet(sheet))
+}
+
 const render = () => {
   const t = localeOf(state.locale)
   document.documentElement.lang = t.tag
   document.documentElement.dir = t.dir
+  saveView(t.calendar, state.year, state.month)
 
   const years = Array.from({ length: 11 }, (_, i) => state.year - 5 + i)
   const rows = splitRows(
@@ -128,6 +162,12 @@ const render = () => {
   const extras = [...app.querySelectorAll('input[name^=extra-]')]
   const inputs = dayInputs(sheet)
 
+  const saved = readSheet(t.calendar, state.year, state.month)
+  for (const [name, value] of Object.entries(saved)) {
+    const el = sheet.querySelector(`[name="${name}"]`)
+    if (el) el.value = value
+  }
+
   const syncTotal = () => {
     const mins = extras.reduce((sum, el) => sum + (parseHm(el.value) ?? 0), 0)
     totalEl.textContent = showHm(mins, t.digit)
@@ -138,12 +178,18 @@ const render = () => {
       .filter(Boolean)
       .join(' · ')
   }
+
+  const saveFields = () =>
+    writeSheet(t.calendar, state.year, state.month, dumpSheet(sheet))
+
   emp.value = state.employee
   emp.oninput = (e) => {
     state.employee = e.target.value
+    localStorage.setItem(employeeKey, state.employee)
     syncMeta()
   }
   syncMeta()
+  syncTotal()
 
   sheet.onkeydown = (e) => {
     if (e.key !== 'Tab' || !e.target.matches('input[name]')) return
@@ -156,13 +202,15 @@ const render = () => {
   }
 
   sheet.oninput = (e) => {
-    if (!e.target.matches('input[name^=extra-]')) return
-    syncTotal()
+    if (!e.target.matches('input[name]')) return
+    if (e.target.matches('input[name^=extra-]')) syncTotal()
+    saveFields()
   }
 
   sheet.onchange = (e) => {
     if (!e.target.matches('input[name^=extra-]')) return
     syncTotal()
+    saveFields()
   }
 
   sheet.onfocusout = (e) => {
@@ -171,25 +219,30 @@ const render = () => {
     if (mins == null) {
       if (e.target.value.trim()) e.target.value = ''
       syncTotal()
+      saveFields()
       return
     }
     e.target.value = formatHm(mins)
     syncTotal()
+    saveFields()
   }
 
   app.querySelector('[name=month]').onchange = (e) => {
+    persistSheet(t.calendar, state.year, state.month)
     state.month = +e.target.value
     state.firstWeekday = loadFirst(t.calendar, state.year, state.month)
     render()
   }
 
   app.querySelector('[name=year]').onchange = (e) => {
+    persistSheet(t.calendar, state.year, state.month)
     state.year = +e.target.value
     state.firstWeekday = loadFirst(t.calendar, state.year, state.month)
     render()
   }
 
   app.querySelector('[name=locale]').onchange = (e) => {
+    persistSheet(t.calendar, state.year, state.month)
     const next = localeOf(e.target.value)
     const d = dateAt(state.year, state.month, 1, t.calendar)
     const p = readCal(d, next.calendar)
@@ -210,6 +263,7 @@ const render = () => {
   app.querySelector('.first').onclick = (e) => {
     const btn = e.target.closest('[data-day]')
     if (!btn) return
+    persistSheet(t.calendar, state.year, state.month)
     state.firstWeekday = +btn.dataset.day
     saveFirst(t.calendar, state.year, state.month, state.firstWeekday)
     render()

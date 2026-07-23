@@ -126,7 +126,7 @@ body {
   table-layout: auto;
 
   th, td {
-    border: 1px solid var(--line);
+    border: 2px solid var(--ink);
     padding: .2rem .3rem;
     text-align: center;
     vertical-align: middle;
@@ -147,16 +147,22 @@ body {
     white-space: nowrap;
   }
 
+  th:nth-child(4),
+  td:nth-child(4) {
+    border-inline-end: 4px double var(--ink);
+  }
+
   .date {
     font-variant-numeric: tabular-nums;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--ink);
     text-align: justify;
     text-align-last: justify;
     padding-inline: .35rem;
 
     span {
-      font-weight: 400;
-      color: var(--muted);
+      font-weight: 700;
+      color: var(--ink);
       font-size: .85em;
     }
   }

@@ -207,16 +207,16 @@ body {
   font-weight: 600;
 
   span {
-    font-size: .75rem;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: var(--muted);
-    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: .02em;
+    color: var(--ink);
+    font-weight: 700;
   }
 
   strong {
     font-variant-numeric: tabular-nums;
-    font-size: 1.05rem;
+    font-size: 1.25rem;
+    font-weight: 700;
   }
 }
 
@@ -288,7 +288,7 @@ body {
     padding: .4rem .6rem;
     print-color-adjust: exact;
 
-    span { font-size: 8pt }
-    strong { font-size: 11pt }
+    span { font-size: 11pt; font-weight: 700 }
+    strong { font-size: 13pt; font-weight: 700 }
   }
 }

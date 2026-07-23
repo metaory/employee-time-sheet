@@ -127,7 +127,7 @@ export const splitRows = (days) => {
   return right.map((r, i) => ({ right: r, left: left[i] ?? null }))
 }
 
-/** Parse H:MM, H.MM, or bare minutes → total minutes. */
+/** Parse H:MM, H.MM, or bare minutes → signed total minutes. */
 export const parseHm = (str) => {
   const s = String(str ?? '')
     .trim()
@@ -135,18 +135,23 @@ export const parseHm = (str) => {
     .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
     .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
   if (!s) return null
-  const hm = s.match(/^(\d{1,3})[:.](\d{1,2})$/)
+  const sign = s.startsWith('-') ? -1 : 1
+  const body = sign < 0 ? s.slice(1) : s
+  if (!body) return null
+  const hm = body.match(/^(\d{1,3})[:.](\d{1,2})$/)
   if (hm) {
     const h = +hm[1]
     const m = +hm[2]
-    return m < 60 ? h * 60 + m : null
+    return m < 60 ? sign * (h * 60 + m) : null
   }
-  if (/^\d{1,4}$/.test(s)) return +s
+  if (/^\d{1,4}$/.test(body)) return sign * +body
   return null
 }
 
-/** Minutes → ASCII H:MM. */
+/** Minutes → ASCII H:MM (optional leading -). */
 export const formatHm = (minutes) => {
-  const n = Math.max(0, Math.round(+minutes || 0))
-  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
+  const n = Math.round(+minutes || 0)
+  const abs = Math.abs(n)
+  const body = `${Math.floor(abs / 60)}:${String(abs % 60).padStart(2, '0')}`
+  return n < 0 ? `-${body}` : body
 }

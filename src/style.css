@@ -70,9 +70,8 @@ body {
 
   [name=employee] { min-width: 12rem }
 
-  .print {
+  .print, .tool {
     font: inherit;
-    margin-inline-start: auto;
     border: 2px solid var(--ink);
     background: var(--ink);
     color: var(--paper);
@@ -81,6 +80,26 @@ body {
     align-self: end;
 
     &:hover { opacity: .85 }
+  }
+
+  .print { margin-inline-start: auto }
+
+  [name=save] {
+    background: #1a7a3c;
+    border-color: #1a7a3c;
+    color: #fff;
+  }
+
+  [name=load] {
+    background: #c9a000;
+    border-color: #c9a000;
+    color: #1a1a1a;
+  }
+
+  [name=clear] {
+    background: #b32020;
+    border-color: #b32020;
+    color: #fff;
   }
 }
 
@@ -136,8 +155,8 @@ body {
     font-size: .7rem;
     text-transform: uppercase;
     letter-spacing: .03em;
-    color: var(--muted);
-    font-weight: 600;
+    color: var(--ink);
+    font-weight: 700;
     background: color-mix(in srgb, var(--bg) 70%, var(--paper));
   }
 

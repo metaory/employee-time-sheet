@@ -104,6 +104,56 @@ const persistSheet = (calendar, year, month) => {
   if (sheet) writeSheet(calendar, year, month, dumpSheet(sheet))
 }
 
+const nospace = (s) => String(s).replace(/\s+/g, '')
+
+const backupName = (employee, monthName, year) => {
+  const stem = [nospace(employee), `${nospace(monthName)}${nospace(year)}`]
+    .filter(Boolean)
+    .join('_')
+  return `${stem || 'timesheet'}.json`
+}
+
+const dumpStorage = () =>
+  Object.fromEntries(
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('timesheet:'))
+      .map((k) => [k, localStorage.getItem(k)]))
+
+const clearTimesheetStorage = () => {
+  for (const k of Object.keys(localStorage)) {
+    if (k.startsWith('timesheet:')) localStorage.removeItem(k)
+  }
+}
+
+const restoreStorage = (data) => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+  clearTimesheetStorage()
+  for (const [k, v] of Object.entries(data)) {
+    if (!k.startsWith('timesheet:')) continue
+    localStorage.setItem(k, v == null ? '' : String(v))
+  }
+  return true
+}
+
+const downloadJson = (filename, data) => {
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  Object.assign(document.createElement('a'), { href: url, download: filename }).click()
+  URL.revokeObjectURL(url)
+}
+
+const syncStateFromStorage = () => {
+  state.locale = loadLocale()
+  state.theme = loadTheme()
+  state.employee = localStorage.getItem(employeeKey) ?? ''
+  const cal = localeOf(state.locale).calendar
+  const view = loadView(cal) ?? todayParts(cal)
+  state.year = view.year
+  state.month = view.month
+  state.firstWeekday = loadFirst(cal, state.year, state.month)
+  applyTheme(state.theme)
+}
+
 const render = () => {
   const t = localeOf(state.locale)
   document.documentElement.lang = t.tag
@@ -141,7 +191,11 @@ const render = () => {
     ${t.weekdays.map((name, i) =>
       `<button type="button" data-day="${i}" class="${i === state.firstWeekday ? 'on' : ''}">${name}</button>`).join('')}
   </fieldset>
+  <button type="button" class="tool" name="save">${t.save}</button>
+  <button type="button" class="tool" name="load">${t.load}</button>
+  <button type="button" class="tool" name="clear">${t.clear}</button>
   <button type="button" class="print" name="print">${t.print}</button>
+  <input type="file" name="load-file" accept="application/json,.json" hidden>
 </header>
 <p class="print-only meta"></p>
 <table dir="rtl" class="sheet">
@@ -273,6 +327,40 @@ const render = () => {
     syncMeta()
     syncTotal()
     print()
+  }
+
+  app.querySelector('[name=save]').onclick = () => {
+    state.employee = emp.value
+    localStorage.setItem(employeeKey, state.employee)
+    persistSheet(t.calendar, state.year, state.month)
+    downloadJson(
+      backupName(state.employee, t.months[state.month], state.year),
+      dumpStorage(),
+    )
+  }
+
+  app.querySelector('[name=clear]').onclick = () => {
+    for (const el of sheet.querySelectorAll('input[name]')) el.value = ''
+    emp.value = ''
+    state.employee = ''
+    localStorage.setItem(employeeKey, '')
+    writeSheet(t.calendar, state.year, state.month, {})
+    syncMeta()
+    syncTotal()
+  }
+
+  const fileInput = app.querySelector('[name=load-file]')
+  app.querySelector('[name=load]').onclick = () => fileInput.click()
+  fileInput.onchange = () => {
+    const file = fileInput.files?.[0]
+    fileInput.value = ''
+    if (!file) return
+    file.text().then((text) => {
+      const data = JSON.parse(text)
+      if (!restoreStorage(data)) return
+      syncStateFromStorage()
+      render()
+    }).catch(() => {})
   }
 }
 

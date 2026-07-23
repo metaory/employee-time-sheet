@@ -131,14 +131,15 @@ export const splitRows = (days) => {
 export const parseHm = (str) => {
   const s = String(str ?? '')
     .trim()
-    .replace(/\u200e|\u200f/g, '')
+    .replace(/\u200e|\u200f|\ufeff/g, '')
+    .replace(/[−–—]/g, '-')
     .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
     .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
   if (!s) return null
   const sign = s.startsWith('-') ? -1 : 1
-  const body = sign < 0 ? s.slice(1) : s
+  const body = s.replace(/^[+-]/, '')
   if (!body) return null
-  const hm = body.match(/^(\d{1,3})[:.](\d{1,2})$/)
+  const hm = body.match(/^(\d{1,3})[:.](\d{1,2})(?::\d{1,2})?$/)
   if (hm) {
     const h = +hm[1]
     const m = +hm[2]

@@ -12,6 +12,10 @@ const UI = {
     firstDay: 'First day',
     locale: 'Locale',
     print: 'Print',
+    totalExtra: 'Total extra',
+    theme: 'Theme',
+    light: 'Light',
+    dark: 'Dark',
     cols: ['date', 'start', 'end', 'extra'],
   },
   fa: {
@@ -25,6 +29,10 @@ const UI = {
     firstDay: 'روز اول',
     locale: 'زبان',
     print: 'چاپ',
+    totalExtra: 'جمع اضافه',
+    theme: 'نما',
+    light: 'روشن',
+    dark: 'تیره',
     cols: ['تاریخ', 'شروع', 'پایان', 'اضافه'],
   },
 }
@@ -117,4 +125,28 @@ export const splitRows = (days) => {
   const right = days.slice(0, mid)
   const left = days.slice(mid)
   return right.map((r, i) => ({ right: r, left: left[i] ?? null }))
+}
+
+/** Parse H:MM, H.MM, or bare minutes → total minutes. */
+export const parseHm = (str) => {
+  const s = String(str ?? '')
+    .trim()
+    .replace(/\u200e|\u200f/g, '')
+    .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+  if (!s) return null
+  const hm = s.match(/^(\d{1,3})[:.](\d{1,2})$/)
+  if (hm) {
+    const h = +hm[1]
+    const m = +hm[2]
+    return m < 60 ? h * 60 + m : null
+  }
+  if (/^\d{1,4}$/.test(s)) return +s
+  return null
+}
+
+/** Minutes → ASCII H:MM. */
+export const formatHm = (minutes) => {
+  const n = Math.max(0, Math.round(+minutes || 0))
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
 }

@@ -6,9 +6,20 @@
   --paper: #fff;
   --accent: #0a6;
   --gap: .5rem;
+  color-scheme: light;
   font: 14px/1.3 Nunito, "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--bg);
+
+  &[data-theme=dark] {
+    --ink: #e8e6e1;
+    --muted: #9a9690;
+    --line: #4a4742;
+    --bg: #1c1b19;
+    --paper: #2a2825;
+    --accent: #3d9;
+    color-scheme: dark;
+  }
 
   &:lang(fa), &:lang(fa-IR) {
     font-family: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
@@ -185,19 +196,56 @@ body {
   font-size: 1rem;
 }
 
+.totals {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+  padding: .55rem .75rem;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  font-weight: 600;
+
+  span {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    font-size: 1.05rem;
+  }
+}
+
 @media print {
   @page {
-    size: A4 landscape;
+    size: A4 portrait;
     margin: 8mm;
   }
 
-  :root { background: #fff }
-  body { margin: 0 }
+  :root {
+    --ink: #1a1a1a;
+    --muted: #666;
+    --line: #bbb;
+    --bg: #f7f5f0;
+    --paper: #fff;
+    --accent: #0a6;
+    background: #fff;
+    color-scheme: light;
+  }
+  html, body {
+    margin: 0;
+    height: 100%;
+  }
   #app {
     padding: 0;
     max-width: none;
     gap: .35rem;
     height: 100%;
+    grid-template-rows: auto 1fr auto;
   }
   .no-print { display: none !important }
   .print-only { display: block }
@@ -209,18 +257,19 @@ body {
   }
   .sheet {
     border-width: 1px;
-    font-size: 9pt;
-    height: auto;
+    font-size: 10pt;
+    height: 100%;
     print-color-adjust: exact;
 
     th, td {
-      padding: .12rem .2rem;
+      padding: .35rem .3rem;
+      height: 1%;
     }
 
-    th { font-size: 7.5pt }
+    th { font-size: 8pt }
 
     .date {
-      font-size: 8pt;
+      font-size: 9pt;
       width: max-content;
       text-align: justify;
       text-align-last: justify;
@@ -228,9 +277,18 @@ body {
     }
 
     input {
-      font-size: 9pt;
+      font-size: 10pt;
       padding: 0;
+      height: 100%;
     }
   }
   .sheet input { caret-color: transparent }
+  .totals {
+    border-width: 1px;
+    padding: .4rem .6rem;
+    print-color-adjust: exact;
+
+    span { font-size: 8pt }
+    strong { font-size: 11pt }
+  }
 }

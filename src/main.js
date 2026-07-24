@@ -228,9 +228,11 @@ const render = () => {
   }
 
   const syncMeta = () => {
-    meta.textContent = [state.employee, `${t.months[state.month]} ${t.digit(state.year)}`]
-      .filter(Boolean)
-      .join(' · ')
+    meta.replaceChildren(
+      ...[`${t.months[state.month]} ${t.digit(state.year)}`, state.employee]
+        .filter(Boolean)
+        .map((text) => Object.assign(document.createElement('span'), { textContent: text })),
+    )
   }
 
   const saveFields = () =>

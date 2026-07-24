@@ -221,9 +221,13 @@ body {
 .print-only { display: none }
 
 .meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
   margin: 0;
   font-weight: 600;
   font-size: 1rem;
+  direction: ltr;
 }
 
 .totals {
@@ -282,8 +286,8 @@ body {
   .no-print { display: none !important }
   .print-only { display: block }
   .meta {
-    text-align: justify;
-    text-align-last: justify;
+    display: flex;
+    width: 100%;
     font-size: 11pt;
     padding-inline: .15rem;
   }

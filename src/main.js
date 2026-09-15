@@ -32,8 +32,13 @@ const loadLocale = () => {
   return LOCALES[saved] ? saved : 'en'
 }
 
-const loadTheme = () =>
-  localStorage.getItem(themeKey) === 'dark' ? 'dark' : 'light'
+const systemTheme = () =>
+  matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+
+const loadTheme = () => {
+  const saved = localStorage.getItem(themeKey)
+  return saved === 'dark' || saved === 'light' ? saved : systemTheme()
+}
 
 const applyTheme = (theme) => {
   document.documentElement.dataset.theme = theme

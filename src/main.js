@@ -10,6 +10,8 @@ import {
   readCal,
   parseHm,
   formatHm,
+  formatHmPad,
+  bindHmInput,
 } from './sheet.js'
 
 const configKey = 'timesheet:config'
@@ -30,6 +32,7 @@ const defaultConfig = (locale = 'en') => ({
   locale,
   theme: systemTheme(),
   employee: '',
+  startHour: '',
   ...todayParts(localeOf(locale).calendar),
   firstDays: {},
   sheet: {},
@@ -42,6 +45,7 @@ const normalizeConfig = (data = {}) => {
     locale,
     theme: data.theme === 'dark' || data.theme === 'light' ? data.theme : base.theme,
     employee: String(data.employee ?? ''),
+    startHour: String(data.startHour ?? ''),
     year: Number.isInteger(data.year) ? data.year : base.year,
     month: Number.isInteger(data.month) ? data.month : base.month,
     firstDays: data.firstDays && typeof data.firstDays === 'object'
@@ -103,6 +107,29 @@ const loadConfig = () => {
 }
 
 const config = loadConfig()
+let sheetUndo = null
+
+const applyStartHour = (hour) => {
+  const mins = parseHm(hour)
+  if (mins == null || mins < 0) return
+
+  const sheet = document.querySelector('#app .sheet')
+  const current = cleanSheet({ ...config.sheet, ...(sheet ? dumpSheet(sheet) : {}) })
+  const next = formatHmPad(mins)
+  const updated = { ...current }
+  let changed = false
+
+  for (const [name, value] of Object.entries(current)) {
+    if (!name.startsWith('start-') || value === '-' || parseHm(value) == null) continue
+    if (value === next) continue
+    updated[name] = next
+    changed = true
+  }
+  if (!changed) return
+
+  sheetUndo = current
+  setConfig({ sheet: cleanSheet(updated) })
+}
 
 const applyConfig = () => {
   const { tag, dir } = localeOf(config.locale)
@@ -117,9 +144,9 @@ const firstWeekday = () =>
 
 const bankCells = (day, t) => day
   ? `<td class="date">${t.digit(day.day)} <span>${day.weekday}</span></td>
-     <td><input type="text" name="start-${day.day}" autocomplete="off" dir="ltr"></td>
-     <td><input type="text" name="end-${day.day}" autocomplete="off" dir="ltr"></td>
-     <td><input type="text" name="extra-${day.day}" autocomplete="off" dir="ltr"></td>`
+     <td><input type="text" name="start-${day.day}" autocomplete="off" maxlength="5" dir="ltr"></td>
+     <td><input type="text" name="end-${day.day}" autocomplete="off" maxlength="5" dir="ltr"></td>
+     <td><input type="text" name="extra-${day.day}" autocomplete="off" maxlength="5" dir="ltr"></td>`
   : `<td class="date pad"></td><td class="pad"></td><td class="pad"></td><td class="pad"></td>`
 
 const bankHead = (t) => t.cols.map((c) => `<th>${c}</th>`).join('')
@@ -147,12 +174,14 @@ const persistSheet = () => {
 
 const nospace = (s) => String(s).replace(/\s+/g, '')
 
-const backupName = (employee, monthName, year) => {
-  const stem = [nospace(employee), `${nospace(monthName)}${nospace(year)}`]
-    .filter(Boolean)
-    .join('_')
-  return `${stem || 'timesheet'}.json`
+const dateStamp = (year, month) => {
+  const yy = String(year).slice(-2)
+  const mm = String(month + 1).padStart(2, '0')
+  return `${yy}-${mm}-01`
 }
+
+const backupName = (name, year, month) =>
+  `${nospace(name) || 'timesheet'}_${dateStamp(year, month)}.json`
 
 const downloadJson = (filename, data) => {
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json;charset=utf-8' })
@@ -202,6 +231,8 @@ const render = () => {
   app.innerHTML = `
 <header class="bar no-print">
   <label>${t.employee} <input type="text" name="employee" autocomplete="name"></label>
+  <label>${t.startHour} <input type="text" name="startHour" autocomplete="off" maxlength="5" dir="ltr"></label>
+  <button type="button" class="tool" name="undo" ${sheetUndo ? '' : 'hidden'}>${t.undo}</button>
   <label>${t.month}
     <select name="month">${t.months.map((name, i) =>
       `<option value="${i}" ${i === config.month ? 'selected' : ''}>${name}</option>`).join('')}</select>
@@ -222,8 +253,10 @@ const render = () => {
   </label>
   <fieldset class="first">
     <legend>${t.firstDay}</legend>
-    ${t.weekdays.map((name, i) =>
-      `<button type="button" data-day="${i}" class="${i === first ? 'on' : ''}">${name}</button>`).join('')}
+    <div class="days">
+      ${t.weekdays.map((name, i) =>
+        `<button type="button" data-day="${i}" class="${i === first ? 'on' : ''}">${name}</button>`).join('')}
+    </div>
   </fieldset>
   <button type="button" class="tool" name="save">${t.save}</button>
   <button type="button" class="tool" name="load">${t.load}</button>
@@ -244,6 +277,8 @@ const render = () => {
 <p class="totals"><span>${t.totalExtra}</span> <strong name="extra-total">${showHm(0, t.digit)}</strong></p>`
 
   const emp = app.querySelector('[name=employee]')
+  const startHourEl = app.querySelector('[name=startHour]')
+  const undoBtn = app.querySelector('[name=undo]')
   const meta = app.querySelector('.meta')
   const totalEl = app.querySelector('[name=extra-total]')
   const sheet = app.querySelector('.sheet')
@@ -271,6 +306,7 @@ const render = () => {
   const saveFields = () => persistSheet()
 
   emp.value = config.employee
+  startHourEl.value = config.startHour
   emp.onclick = () => {
     if (emp.value) emp.select()
   }
@@ -278,6 +314,19 @@ const render = () => {
     setConfig({ employee: e.target.value }, { render: false })
     syncMeta()
   }
+
+  bindHmInput(startHourEl, {
+    onChange: () => setConfig({ startHour: startHourEl.value }, { render: false }),
+    onBlur: () => applyStartHour(startHourEl.value),
+  })
+
+  undoBtn.onclick = () => {
+    if (!sheetUndo) return
+    const snapshot = sheetUndo
+    sheetUndo = null
+    setConfig({ sheet: cleanSheet(snapshot) })
+  }
+
   syncMeta()
   syncTotal()
 
@@ -289,38 +338,15 @@ const render = () => {
     if (next < 0 || next >= inputs.length) return
     e.preventDefault()
     inputs[next].focus()
-    if (inputs[next].value) inputs[next].select()
   }
 
-  sheet.onclick = (e) => {
-    if (!e.target.matches('input[name]') || !e.target.value) return
-    e.target.select()
-  }
-
-  sheet.oninput = (e) => {
-    if (!e.target.matches('input[name]')) return
-    if (e.target.matches('input[name^=extra-]')) syncTotal()
-    saveFields()
-  }
-
-  sheet.onchange = (e) => {
-    if (!e.target.matches('input[name^=extra-]')) return
-    syncTotal()
-    saveFields()
-  }
-
-  sheet.onfocusout = (e) => {
-    if (!e.target.matches('input[name^=extra-]')) return
-    const mins = parseHm(e.target.value)
-    if (mins == null) {
-      if (e.target.value.trim()) e.target.value = ''
-      syncTotal()
-      saveFields()
-      return
-    }
-    e.target.value = formatHm(mins)
-    syncTotal()
-    saveFields()
+  for (const el of inputs) {
+    bindHmInput(el, {
+      onChange: () => {
+        if (el.name.startsWith('extra-')) syncTotal()
+        saveFields()
+      },
+    })
   }
 
   app.querySelector('[name=month]').onchange = (e) => {
@@ -361,17 +387,17 @@ const render = () => {
   }
 
   app.querySelector('[name=save]').onclick = () => {
-    setConfig({ employee: emp.value }, { render: false })
     persistSheet()
-    downloadJson(
-      backupName(config.employee, t.months[config.month], config.year),
-      config,
-    )
+    const name = prompt('Name')
+    if (name == null) return
+    downloadJson(backupName(name, config.year, config.month), config)
   }
 
   app.querySelector('[name=clear]').onclick = () => {
+    if (!confirm(t.clearConfirm)) return
     for (const el of sheet.querySelectorAll('input[name]')) el.value = ''
     emp.value = ''
+    sheetUndo = null
     setConfig({ employee: '', sheet: {} }, { render: false })
     syncMeta()
     syncTotal()
@@ -387,6 +413,7 @@ const render = () => {
       const data = JSON.parse(text)
       const imported = importConfig(data)
       if (!imported) return
+      sheetUndo = null
       setConfig(imported, { convertLocale: false })
     }).catch(() => {})
   }

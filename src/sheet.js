@@ -7,6 +7,8 @@ const UI = {
     dir: 'ltr',
     label: 'EN',
     employee: 'Employee',
+    startHour: 'Start hour',
+    undo: 'Undo',
     month: 'Month',
     year: 'Year',
     firstDay: 'First day',
@@ -15,6 +17,7 @@ const UI = {
     save: 'Save',
     load: 'Load',
     clear: 'Clear',
+    clearConfirm: 'Clear all timesheet data?',
     totalExtra: 'Total extra',
     theme: 'Theme',
     light: 'Light',
@@ -27,6 +30,8 @@ const UI = {
     dir: 'rtl',
     label: 'فا',
     employee: 'کارمند',
+    startHour: 'ساعت شروع',
+    undo: 'بازگشت',
     month: 'ماه',
     year: 'سال',
     firstDay: 'روز اول',
@@ -35,6 +40,7 @@ const UI = {
     save: 'ذخیره',
     load: 'بارگذاری',
     clear: 'پاک کردن',
+    clearConfirm: 'همه داده‌های برگه زمان پاک شود؟',
     totalExtra: 'جمع اضافه',
     theme: 'نما',
     light: 'روشن',
@@ -161,4 +167,107 @@ export const formatHm = (minutes) => {
   const abs = Math.abs(n)
   const body = `${Math.floor(abs / 60)}:${String(abs % 60).padStart(2, '0')}`
   return n < 0 ? `-${body}` : body
+}
+
+const HM = '00:00'
+const hmSelect = (el, minutes = false) =>
+  el.setSelectionRange(minutes ? 3 : 0, minutes ? 5 : 2)
+
+/** Minutes → zero-padded ASCII HH:MM. */
+export const formatHmPad = (minutes) => {
+  const n = Math.round(+minutes || 0)
+  const abs = Math.abs(n)
+  const body = `${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`
+  return n < 0 ? `-${body}` : body
+}
+
+const hmValue = (value) => {
+  if (value === '-') return value
+  const minutes = parseHm(value)
+  return minutes == null || minutes < 0 || minutes > 5999
+    ? ''
+    : formatHmPad(minutes)
+}
+
+/** Bind segmented HH:MM editing with `-` as an off-day marker. */
+export const bindHmInput = (el, { onChange, onBlur } = {}) => {
+  const change = () => onChange?.()
+  const select = (minutes) => hmSelect(el, minutes)
+
+  el.maxLength = 5
+  el.onfocus = () => {
+    el.value = hmValue(el.value) || HM
+    el.value === '-' ? el.select() : select(false)
+  }
+  el.onclick = () => {
+    const minutes = (el.selectionStart ?? 0) >= 3
+    setTimeout(() => el.value === '-' ? el.select() : select(minutes))
+  }
+  el.onkeydown = (event) => {
+    if (event.key === '-') {
+      event.preventDefault()
+      el.value = '-'
+      el.select()
+      change()
+      return
+    }
+    if (/^\d$/.test(event.key)) {
+      event.preventDefault()
+      const wasDash = el.value === '-'
+      if (!/^\d{2}:\d{2}$/.test(el.value)) {
+        el.value = HM
+        select(false)
+      }
+      const start = el.selectionStart ?? 0
+      const pos = wasDash
+        ? 1
+        : start < 3 ? Math.min(start, 1) : Math.min(Math.max(start, 3), 4)
+      el.value = `${el.value.slice(0, pos)}${event.key}${el.value.slice(pos + 1)}`
+      if (wasDash || pos === 1) select(true)
+      else el.setSelectionRange(pos + 1, pos + 1)
+      change()
+      return
+    }
+    if (event.key === 'Tab' && el.value !== '-') {
+      const minutes = (el.selectionStart ?? 0) >= 3
+      if ((!event.shiftKey && minutes) || (event.shiftKey && !minutes)) return
+      event.preventDefault()
+      event.stopPropagation()
+      select(!event.shiftKey)
+      return
+    }
+    if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+      && el.value !== '-') {
+      event.preventDefault()
+      select(event.key === 'ArrowRight')
+      return
+    }
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      event.preventDefault()
+      if (el.value === '-') {
+        el.value = ''
+        change()
+        return
+      }
+      const start = el.selectionStart ?? 0
+      const end = el.selectionEnd ?? start
+      const at = event.key === 'Backspace' && start === end ? start - 1 : start
+      const positions = [0, 1, 3, 4].filter((pos) =>
+        start === end ? pos === Math.max(0, at) : pos >= start && pos < end)
+      el.value = [...el.value]
+        .map((char, pos) => positions.includes(pos) ? '0' : char)
+        .join('')
+      select(start >= 3)
+      change()
+      return
+    }
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault()
+    }
+  }
+  el.onblur = () => {
+    el.value = hmValue(el.value)
+    change()
+    onBlur?.()
+  }
 }

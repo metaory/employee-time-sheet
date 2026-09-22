@@ -1,10 +1,26 @@
 :root {
-  --ink: #1a1a1a;
-  --muted: #666;
-  --line: #bbb;
-  --bg: #f7f5f0;
-  --paper: #fff;
-  --accent: #0a6;
+  --navy: #321e48;
+  --sea: #43637e;
+  --mint: #65dcd5;
+  --cold: #d9fff4;
+  --ink: var(--navy);
+  --muted: var(--sea);
+  --line: color-mix(in srgb, color-mix(in srgb, var(--sea) 70%, var(--navy)) 55%, transparent);
+  --bg: var(--sea);
+  --row: color-mix(in srgb, var(--mint) 44%, var(--sea));
+  --row-alt: color-mix(in srgb, var(--mint) 28%, var(--sea));
+  --paper: var(--row);
+  --field: var(--row-alt);
+  --bar: color-mix(in srgb, var(--navy) 78%, var(--sea));
+  --accent: var(--mint);
+  --save: var(--mint);
+  --load: var(--sea);
+  --clear: color-mix(in srgb, var(--navy) 75%, #c44);
+  --on-navy: var(--cold);
+  --on-save: var(--navy);
+  --date-muted: var(--sea);
+  --page-ink: var(--cold);
+  --radius: 14px;
   --gap: .5rem;
   color-scheme: light;
   font: 14px/1.3 Nunito, "Segoe UI", sans-serif;
@@ -12,12 +28,16 @@
   background: var(--bg);
 
   &[data-theme=dark] {
-    --ink: #e8e6e1;
-    --muted: #9a9690;
-    --line: #4a4742;
-    --bg: #1c1b19;
-    --paper: #2a2825;
-    --accent: #3d9;
+    --ink: var(--cold);
+    --muted: color-mix(in srgb, var(--cold) 68%, var(--sea));
+    --line: color-mix(in srgb, color-mix(in srgb, var(--sea) 55%, var(--navy)) 55%, transparent);
+    --bg: color-mix(in srgb, var(--navy) 88%, #000);
+    --row: color-mix(in srgb, var(--navy) 76%, var(--sea));
+    --row-alt: color-mix(in srgb, var(--navy) 88%, var(--sea));
+    --paper: var(--row);
+    --field: var(--row-alt);
+    --bar: color-mix(in srgb, var(--navy) 94%, #000);
+    --date-muted: var(--muted);
     color-scheme: dark;
   }
 
@@ -26,7 +46,7 @@
   }
 }
 
-*, *::before, *::after { box-sizing: border-box }
+*, *::before, *::after { box-sizing: border-box; box-shadow: none }
 
 body {
   margin: 0;
@@ -46,8 +66,9 @@ body {
   flex-wrap: wrap;
   align-items: end;
   gap: var(--gap) 1rem;
-  background: var(--paper);
-  border: 2px solid var(--ink);
+  background: var(--bar);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius);
   padding: .75rem 1rem;
 
   label {
@@ -56,60 +77,68 @@ body {
     font-size: .75rem;
     text-transform: uppercase;
     letter-spacing: .04em;
-    color: var(--muted);
+    color: color-mix(in srgb, var(--on-navy) 72%, var(--mint));
   }
 
   input, select {
     font: inherit;
     color: var(--ink);
     border: 1px solid var(--line);
+    border-radius: calc(var(--radius) - 4px);
     padding: .35rem .5rem;
-    background: var(--paper);
+    background: var(--field);
     min-width: 8rem;
     height: 2.25rem;
     line-height: 1.2;
     box-sizing: border-box;
+    outline: none;
+
+    &:focus { border-color: var(--accent) }
   }
 
   [name=employee] { min-width: 12rem }
+  [name=startHour] { min-width: 5rem }
 
   .print, .tool {
     font: inherit;
-    border: 2px solid var(--ink);
-    background: var(--ink);
-    color: var(--paper);
+    border: 2px solid var(--navy);
+    border-radius: calc(var(--radius) - 4px);
+    background: var(--navy);
+    color: var(--on-navy);
     padding: .4rem .9rem;
     cursor: pointer;
     align-self: end;
 
-    &:hover { opacity: .85 }
+    &:hover {
+      border-color: var(--mint);
+      filter: saturate(1.15);
+    }
   }
 
   .print { margin-inline-start: auto }
 
   [name=save] {
-    background: #1a7a3c;
-    border-color: #1a7a3c;
-    color: #fff;
+    background: var(--save);
+    border-color: var(--save);
+    color: var(--on-save);
   }
 
   [name=load] {
-    background: #c9a000;
-    border-color: #c9a000;
-    color: #1a1a1a;
+    background: var(--load);
+    border-color: var(--load);
+    color: var(--on-navy);
   }
 
   [name=clear] {
-    background: #b32020;
-    border-color: #b32020;
-    color: #fff;
+    background: var(--clear);
+    border-color: var(--clear);
+    color: var(--on-navy);
   }
 }
 
 .first {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .25rem;
+  display: grid;
+  gap: .2rem;
   border: 0;
   margin: 0;
   padding: 0;
@@ -118,25 +147,35 @@ body {
     font-size: .75rem;
     text-transform: uppercase;
     letter-spacing: .04em;
-    color: var(--muted);
+    color: color-mix(in srgb, var(--on-navy) 72%, var(--mint));
     padding: 0;
-    margin-block-end: .2rem;
   }
 
-  button {
-    font: inherit;
+  .days {
+    display: inline-flex;
     border: 1px solid var(--line);
-    background: var(--paper);
-    padding: .3rem .45rem;
-    cursor: pointer;
+    border-radius: calc(var(--radius) - 4px);
+    overflow: hidden;
 
-    &.on {
-      border-color: var(--ink);
-      background: var(--ink);
-      color: var(--paper);
+    button {
+      font: inherit;
+      color: var(--ink);
+      border: 0;
+      border-inline-end: 1px solid var(--line);
+      border-radius: 0;
+      background: var(--field);
+      padding: .3rem .45rem;
+      cursor: pointer;
+
+      &:last-child { border-inline-end: 0 }
+
+      &.on {
+        background: var(--navy);
+        color: var(--on-navy);
+      }
+
+      &:hover:not(.on) { background: color-mix(in srgb, var(--mint) 18%, var(--field)) }
     }
-
-    &:hover:not(.on) { border-color: var(--ink) }
   }
 }
 
@@ -144,11 +183,13 @@ body {
   width: 100%;
   border-collapse: collapse;
   background: var(--paper);
-  border: 2px solid var(--ink);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius);
+  overflow: hidden;
   table-layout: auto;
 
   th, td {
-    border: 2px solid var(--ink);
+    border: 1px solid var(--line);
     padding: .2rem .3rem;
     text-align: center;
     vertical-align: middle;
@@ -158,9 +199,9 @@ body {
     font-size: .7rem;
     text-transform: uppercase;
     letter-spacing: .03em;
-    color: var(--ink);
+    color: var(--on-navy);
     font-weight: 700;
-    background: color-mix(in srgb, var(--bg) 70%, var(--paper));
+    background: var(--navy);
   }
 
   th:nth-child(4n + 1),
@@ -171,7 +212,7 @@ body {
 
   th:nth-child(4),
   td:nth-child(4) {
-    border-inline-end: 4px double var(--ink);
+    border-inline-end: 4px double var(--line);
   }
 
   .date {
@@ -184,31 +225,27 @@ body {
 
     span {
       font-weight: 700;
-      color: var(--ink);
+      color: var(--date-muted);
       font-size: .85em;
     }
   }
-
-  .pad { background: color-mix(in srgb, var(--bg) 40%, var(--paper)) }
 
   input {
     width: 100%;
     border: 0;
     background: transparent;
     font: inherit;
+    font-variant-numeric: tabular-nums;
     text-align: center;
     padding: .15rem;
     min-width: 0;
+    outline: none;
 
-    &:focus {
-      outline: 3px solid var(--accent);
-      outline-offset: -3px;
-      font-weight: 700;
-      background: color-mix(in srgb, var(--accent) 18%, var(--paper));
-    }
+    &:focus { font-weight: 700 }
   }
 
-  tbody tr:nth-child(even) { background: color-mix(in srgb, var(--bg) 35%, var(--paper)) }
+  tbody tr { background: var(--row) }
+  tbody tr:nth-child(even) { background: var(--row-alt) }
 }
 
 :lang(fa), :lang(fa-IR) {
@@ -228,6 +265,7 @@ body {
   font-weight: 600;
   font-size: 1rem;
   direction: ltr;
+  color: var(--page-ink);
 }
 
 .totals {
@@ -236,15 +274,16 @@ body {
   align-items: center;
   margin: 0;
   padding: .55rem .75rem;
-  background: #0b2a6b;
-  border: 2px solid #0b2a6b;
-  color: #fff;
+  background: var(--navy);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius);
+  color: var(--on-navy);
   font-weight: 700;
 
   span {
     font-size: 1.05rem;
     letter-spacing: .02em;
-    color: #fff;
+    color: var(--on-navy);
     font-weight: 700;
   }
 
@@ -252,7 +291,7 @@ body {
     font-variant-numeric: tabular-nums;
     font-size: 1.25rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--mint);
   }
 }
 
@@ -263,12 +302,13 @@ body {
   }
 
   :root {
-    --ink: #1a1a1a;
-    --muted: #666;
-    --line: #bbb;
-    --bg: #f7f5f0;
+    --ink: var(--navy);
+    --muted: var(--sea);
+    --line: color-mix(in srgb, var(--sea) 70%, var(--navy));
+    --bg: var(--cold);
     --paper: #fff;
-    --accent: #0a6;
+    --accent: var(--mint);
+    --page-ink: var(--navy);
     background: #fff;
     color-scheme: light;
   }
@@ -321,14 +361,14 @@ body {
   .sheet input { caret-color: transparent }
   .totals {
     border-width: 1px;
-    border-color: #0b2a6b;
+    border-color: var(--navy);
     padding: .4rem .6rem;
-    background: #0b2a6b;
-    color: #fff;
+    background: var(--navy);
+    color: var(--on-navy);
     print-color-adjust: exact;
 
     span, strong {
-      color: #fff;
+      color: var(--on-navy);
       font-weight: 700;
     }
 

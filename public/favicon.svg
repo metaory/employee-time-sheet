@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#0a6" rx="2"/>
+  <rect width="32" height="32" fill="#321e48" rx="4"/>
   <text
     x="16"
     y="16"
@@ -7,7 +7,7 @@
     dominant-baseline="central"
     font-size="22"
     font-weight="700"
-    fill="#fff"
+    fill="#65dcd5"
     font-family="system-ui,sans-serif"
   >☰</text>
 </svg>

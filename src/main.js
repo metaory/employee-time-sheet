@@ -13,7 +13,8 @@ import {
 } from './sheet.js'
 
 const firstKey = (cal, y, m) => `timesheet:firstDay:${cal}:${y}-${m}`
-const sheetKey = (cal, y, m) => `timesheet:sheet:${cal}:${y}-${m}`
+const sheetKey = (cal) => `timesheet:sheet:${cal}`
+const legacySheetKey = (cal, y, m) => `${sheetKey(cal)}:${y}-${m}`
 const viewKey = (cal) => `timesheet:view:${cal}`
 const localeKey = 'timesheet:locale'
 const themeKey = 'timesheet:theme'
@@ -46,18 +47,37 @@ const applyTheme = (theme) => {
 
 const dumpSheet = (root) =>
   Object.fromEntries(
-    [...root.querySelectorAll('input[name]')].flatMap((el) =>
-      el.value ? [[el.name, el.value]] : []),
+    [...root.querySelectorAll('input[name]')].map((el) => [el.name, el.value]),
   )
 
-const readSheet = (cal, y, m) =>
-  JSON.parse(localStorage.getItem(sheetKey(cal, y, m)) ?? '{}')
-
-const writeSheet = (cal, y, m, data) => {
+const storeSheet = (cal, data) => {
   const clean = Object.fromEntries(Object.entries(data).filter(([, v]) => v))
-  const key = sheetKey(cal, y, m)
+  const key = sheetKey(cal)
   if (Object.keys(clean).length) localStorage.setItem(key, JSON.stringify(clean))
   else localStorage.removeItem(key)
+}
+
+const readSheet = (cal, y, m) => {
+  const saved = localStorage.getItem(sheetKey(cal))
+  if (saved != null) return JSON.parse(saved)
+
+  const current = legacySheetKey(cal, y, m)
+  const prefix = `${sheetKey(cal)}:`
+  const keys = Object.keys(localStorage)
+    .filter((key) => key.startsWith(prefix))
+    .sort((a, b) =>
+      Number(a === current) - Number(b === current) || a.localeCompare(b))
+  const data = keys.reduce(
+    (sheet, key) => ({ ...sheet, ...JSON.parse(localStorage.getItem(key)) }),
+    {},
+  )
+  storeSheet(cal, data)
+  for (const key of keys) localStorage.removeItem(key)
+  return data
+}
+
+const writeSheet = (cal, y, m, data) => {
+  storeSheet(cal, { ...readSheet(cal, y, m), ...data })
 }
 
 const saveView = (cal, year, month) =>
@@ -360,7 +380,7 @@ const render = () => {
     emp.value = ''
     state.employee = ''
     localStorage.setItem(employeeKey, '')
-    writeSheet(t.calendar, state.year, state.month, {})
+    storeSheet(t.calendar, {})
     syncMeta()
     syncTotal()
   }

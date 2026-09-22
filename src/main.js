@@ -12,96 +12,108 @@ import {
   formatHm,
 } from './sheet.js'
 
-const firstKey = (cal, y, m) => `timesheet:firstDay:${cal}:${y}-${m}`
-const sheetKey = (cal) => `timesheet:sheet:${cal}`
-const legacySheetKey = (cal, y, m) => `${sheetKey(cal)}:${y}-${m}`
-const viewKey = (cal) => `timesheet:view:${cal}`
-const localeKey = 'timesheet:locale'
-const themeKey = 'timesheet:theme'
-const employeeKey = 'timesheet:employee'
-
-const loadFirst = (cal, y, m) => {
-  const saved = localStorage.getItem(firstKey(cal, y, m))
-  return saved == null ? autoFirstWeekday(y, m, cal) : +saved
-}
-
-const saveFirst = (cal, y, m, day) =>
-  localStorage.setItem(firstKey(cal, y, m), String(day))
-
-const loadLocale = () => {
-  const saved = localStorage.getItem(localeKey)
-  return LOCALES[saved] ? saved : 'en'
-}
+const configKey = 'timesheet:config'
+const viewId = ({ year, month }) => `${year}-${month}`
 
 const systemTheme = () =>
   matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-
-const loadTheme = () => {
-  const saved = localStorage.getItem(themeKey)
-  return saved === 'dark' || saved === 'light' ? saved : systemTheme()
-}
-
-const applyTheme = (theme) => {
-  document.documentElement.dataset.theme = theme
-}
 
 const dumpSheet = (root) =>
   Object.fromEntries(
     [...root.querySelectorAll('input[name]')].map((el) => [el.name, el.value]),
   )
 
-const storeSheet = (cal, data) => {
-  const clean = Object.fromEntries(Object.entries(data).filter(([, v]) => v))
-  const key = sheetKey(cal)
-  if (Object.keys(clean).length) localStorage.setItem(key, JSON.stringify(clean))
-  else localStorage.removeItem(key)
+const cleanSheet = (sheet) =>
+  Object.fromEntries(Object.entries(sheet).filter(([, value]) => value))
+
+const defaultConfig = (locale = 'en') => ({
+  locale,
+  theme: systemTheme(),
+  employee: '',
+  ...todayParts(localeOf(locale).calendar),
+  firstDays: {},
+  sheet: {},
+})
+
+const normalizeConfig = (data = {}) => {
+  const locale = LOCALES[data.locale] ? data.locale : 'en'
+  const base = defaultConfig(locale)
+  return {
+    locale,
+    theme: data.theme === 'dark' || data.theme === 'light' ? data.theme : base.theme,
+    employee: String(data.employee ?? ''),
+    year: Number.isInteger(data.year) ? data.year : base.year,
+    month: Number.isInteger(data.month) ? data.month : base.month,
+    firstDays: data.firstDays && typeof data.firstDays === 'object'
+      ? Object.fromEntries(
+        Object.entries(data.firstDays).filter(([, day]) =>
+          Number.isInteger(day) && day >= 0 && day <= 6))
+      : {},
+    sheet: data.sheet && typeof data.sheet === 'object'
+      ? cleanSheet(data.sheet)
+      : {},
+  }
 }
 
-const readSheet = (cal, y, m) => {
-  const saved = localStorage.getItem(sheetKey(cal))
-  if (saved != null) return JSON.parse(saved)
+const saveConfig = (value) =>
+  localStorage.setItem(configKey, JSON.stringify(value))
 
-  const current = legacySheetKey(cal, y, m)
-  const prefix = `${sheetKey(cal)}:`
-  const keys = Object.keys(localStorage)
-    .filter((key) => key.startsWith(prefix))
-    .sort((a, b) =>
-      Number(a === current) - Number(b === current) || a.localeCompare(b))
-  const data = keys.reduce(
-    (sheet, key) => ({ ...sheet, ...JSON.parse(localStorage.getItem(key)) }),
-    {},
+const legacyConfig = (source) => {
+  const keys = Object.keys(source)
+  const get = (key) => source.getItem?.(key) ?? source[key]
+  const locale = LOCALES[get('timesheet:locale')] ? get('timesheet:locale') : 'en'
+  const calendar = localeOf(locale).calendar
+  const view = JSON.parse(get(`timesheet:view:${calendar}`) ?? 'null')
+    ?? todayParts(calendar)
+  const sheetKey = `timesheet:sheet:${calendar}`
+  const current = `${sheetKey}:${view.year}-${view.month}`
+  const savedSheet = get(sheetKey)
+  const sheet = savedSheet == null
+    ? keys
+      .filter((key) => key.startsWith(`${sheetKey}:`))
+      .sort((a, b) =>
+        Number(a === current) - Number(b === current) || a.localeCompare(b))
+      .reduce((all, key) => ({ ...all, ...JSON.parse(get(key)) }), {})
+    : JSON.parse(savedSheet)
+  const firstPrefix = `timesheet:firstDay:${calendar}:`
+  const firstDays = Object.fromEntries(
+    keys
+      .filter((key) => key.startsWith(firstPrefix))
+      .map((key) => [key.slice(firstPrefix.length), +get(key)]),
   )
-  storeSheet(cal, data)
-  for (const key of keys) localStorage.removeItem(key)
-  return data
+  return normalizeConfig({
+    locale,
+    theme: get('timesheet:theme'),
+    employee: get('timesheet:employee'),
+    ...view,
+    firstDays,
+    sheet,
+  })
 }
 
-const writeSheet = (cal, y, m, data) => {
-  storeSheet(cal, { ...readSheet(cal, y, m), ...data })
+const loadConfig = () => {
+  const saved = localStorage.getItem(configKey)
+  if (saved != null) return normalizeConfig(JSON.parse(saved))
+  const value = legacyConfig(localStorage)
+  saveConfig(value)
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('timesheet:') && key !== configKey) localStorage.removeItem(key)
+  }
+  return value
 }
 
-const saveView = (cal, year, month) =>
-  localStorage.setItem(viewKey(cal), JSON.stringify({ year, month }))
+const config = loadConfig()
 
-const loadView = (cal) => {
-  const { year, month } = JSON.parse(localStorage.getItem(viewKey(cal)) ?? 'null') ?? {}
-  return Number.isInteger(year) && Number.isInteger(month) ? { year, month } : null
+const applyConfig = () => {
+  const { tag, dir } = localeOf(config.locale)
+  document.documentElement.lang = tag
+  document.documentElement.dir = dir
+  document.documentElement.dataset.theme = config.theme
 }
 
-applyTheme(loadTheme())
-
-const boot = localeOf(loadLocale())
-const today = todayParts(boot.calendar)
-const view = loadView(boot.calendar) ?? today
-
-const state = {
-  employee: localStorage.getItem(employeeKey) ?? '',
-  year: view.year,
-  month: view.month,
-  firstWeekday: loadFirst(boot.calendar, view.year, view.month),
-  locale: loadLocale(),
-  theme: loadTheme(),
-}
+const firstWeekday = () =>
+  config.firstDays[viewId(config)]
+  ?? autoFirstWeekday(config.year, config.month, localeOf(config.locale).calendar)
 
 const bankCells = (day, t) => day
   ? `<td class="date">${t.digit(day.day)} <span>${day.weekday}</span></td>
@@ -124,9 +136,13 @@ const dayInputs = (sheet) =>
     return +pa[2] - +pb[2] || fieldRank[pa[1]] - fieldRank[pb[1]]
   })
 
-const persistSheet = (calendar, year, month) => {
+const persistSheet = () => {
   const sheet = document.querySelector('#app .sheet')
-  if (sheet) writeSheet(calendar, year, month, dumpSheet(sheet))
+  if (!sheet) return
+  setConfig(
+    { sheet: cleanSheet({ ...config.sheet, ...dumpSheet(sheet) }) },
+    { render: false },
+  )
 }
 
 const nospace = (s) => String(s).replace(/\s+/g, '')
@@ -138,28 +154,6 @@ const backupName = (employee, monthName, year) => {
   return `${stem || 'timesheet'}.json`
 }
 
-const dumpStorage = () =>
-  Object.fromEntries(
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith('timesheet:'))
-      .map((k) => [k, localStorage.getItem(k)]))
-
-const clearTimesheetStorage = () => {
-  for (const k of Object.keys(localStorage)) {
-    if (k.startsWith('timesheet:')) localStorage.removeItem(k)
-  }
-}
-
-const restoreStorage = (data) => {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return false
-  clearTimesheetStorage()
-  for (const [k, v] of Object.entries(data)) {
-    if (!k.startsWith('timesheet:')) continue
-    localStorage.setItem(k, v == null ? '' : String(v))
-  }
-  return true
-}
-
 const downloadJson = (filename, data) => {
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -167,27 +161,42 @@ const downloadJson = (filename, data) => {
   URL.revokeObjectURL(url)
 }
 
-const syncStateFromStorage = () => {
-  state.locale = loadLocale()
-  state.theme = loadTheme()
-  state.employee = localStorage.getItem(employeeKey) ?? ''
-  const cal = localeOf(state.locale).calendar
-  const view = loadView(cal) ?? todayParts(cal)
-  state.year = view.year
-  state.month = view.month
-  state.firstWeekday = loadFirst(cal, state.year, state.month)
-  applyTheme(state.theme)
+const importConfig = (data) => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null
+  return Object.keys(data).some((key) => key.startsWith('timesheet:'))
+    ? legacyConfig(data)
+    : normalizeConfig(data)
 }
 
-const render = () => {
-  const t = localeOf(state.locale)
-  document.documentElement.lang = t.tag
-  document.documentElement.dir = t.dir
-  saveView(t.calendar, state.year, state.month)
+const setConfig = (
+  patch,
+  { render: shouldRender = true, convertLocale = true } = {},
+) => {
+  const previous = { ...config }
+  const next = { ...config, ...patch }
+  if (convertLocale && patch.locale && patch.locale !== previous.locale) {
+    const from = localeOf(previous.locale).calendar
+    const to = localeOf(patch.locale).calendar
+    const date = dateAt(previous.year, previous.month, 1, from)
+    const { year, month } = readCal(date, to)
+    Object.assign(next, { year, month: month - 1 })
+  }
+  Object.assign(config, normalizeConfig(next))
+  saveConfig(config)
+  applyConfig()
+  if (shouldRender) render()
+  return config
+}
 
-  const years = Array.from({ length: 11 }, (_, i) => state.year - 5 + i)
+applyConfig()
+
+const render = () => {
+  const t = localeOf(config.locale)
+  const first = firstWeekday()
+
+  const years = Array.from({ length: 11 }, (_, i) => config.year - 5 + i)
   const rows = splitRows(
-    buildDays(state.year, state.month, state.firstWeekday, t.weekdays, t.calendar),
+    buildDays(config.year, config.month, first, t.weekdays, t.calendar),
   )
   const app = document.querySelector('#app')
   app.innerHTML = `
@@ -195,26 +204,26 @@ const render = () => {
   <label>${t.employee} <input type="text" name="employee" autocomplete="name"></label>
   <label>${t.month}
     <select name="month">${t.months.map((name, i) =>
-      `<option value="${i}" ${i === state.month ? 'selected' : ''}>${name}</option>`).join('')}</select>
+      `<option value="${i}" ${i === config.month ? 'selected' : ''}>${name}</option>`).join('')}</select>
   </label>
   <label>${t.year}
     <select name="year">${years.map((y) =>
-      `<option value="${y}" ${y === state.year ? 'selected' : ''}>${t.digit(y)}</option>`).join('')}</select>
+      `<option value="${y}" ${y === config.year ? 'selected' : ''}>${t.digit(y)}</option>`).join('')}</select>
   </label>
   <label>${t.locale}
     <select name="locale">${Object.entries(LOCALES).map(([id, loc]) =>
-      `<option value="${id}" ${id === state.locale ? 'selected' : ''}>${loc.label}</option>`).join('')}</select>
+      `<option value="${id}" ${id === config.locale ? 'selected' : ''}>${loc.label}</option>`).join('')}</select>
   </label>
   <label>${t.theme}
     <select name="theme">
-      <option value="light" ${state.theme === 'light' ? 'selected' : ''}>${t.light}</option>
-      <option value="dark" ${state.theme === 'dark' ? 'selected' : ''}>${t.dark}</option>
+      <option value="light" ${config.theme === 'light' ? 'selected' : ''}>${t.light}</option>
+      <option value="dark" ${config.theme === 'dark' ? 'selected' : ''}>${t.dark}</option>
     </select>
   </label>
   <fieldset class="first">
     <legend>${t.firstDay}</legend>
     ${t.weekdays.map((name, i) =>
-      `<button type="button" data-day="${i}" class="${i === state.firstWeekday ? 'on' : ''}">${name}</button>`).join('')}
+      `<button type="button" data-day="${i}" class="${i === first ? 'on' : ''}">${name}</button>`).join('')}
   </fieldset>
   <button type="button" class="tool" name="save">${t.save}</button>
   <button type="button" class="tool" name="load">${t.load}</button>
@@ -241,8 +250,7 @@ const render = () => {
   const extras = [...app.querySelectorAll('input[name^=extra-]')]
   const inputs = dayInputs(sheet)
 
-  const saved = readSheet(t.calendar, state.year, state.month)
-  for (const [name, value] of Object.entries(saved)) {
+  for (const [name, value] of Object.entries(config.sheet)) {
     const el = sheet.querySelector(`[name="${name}"]`)
     if (el) el.value = value
   }
@@ -254,22 +262,20 @@ const render = () => {
 
   const syncMeta = () => {
     meta.replaceChildren(
-      ...[`${t.months[state.month]} ${t.digit(state.year)}`, state.employee]
+      ...[`${t.months[config.month]} ${t.digit(config.year)}`, config.employee]
         .filter(Boolean)
         .map((text) => Object.assign(document.createElement('span'), { textContent: text })),
     )
   }
 
-  const saveFields = () =>
-    writeSheet(t.calendar, state.year, state.month, dumpSheet(sheet))
+  const saveFields = () => persistSheet()
 
-  emp.value = state.employee
+  emp.value = config.employee
   emp.onclick = () => {
     if (emp.value) emp.select()
   }
   emp.oninput = (e) => {
-    state.employee = e.target.value
-    localStorage.setItem(employeeKey, state.employee)
+    setConfig({ employee: e.target.value }, { render: false })
     syncMeta()
   }
   syncMeta()
@@ -318,45 +324,34 @@ const render = () => {
   }
 
   app.querySelector('[name=month]').onchange = (e) => {
-    persistSheet(t.calendar, state.year, state.month)
-    state.month = +e.target.value
-    state.firstWeekday = loadFirst(t.calendar, state.year, state.month)
-    render()
+    persistSheet()
+    setConfig({ month: +e.target.value })
   }
 
   app.querySelector('[name=year]').onchange = (e) => {
-    persistSheet(t.calendar, state.year, state.month)
-    state.year = +e.target.value
-    state.firstWeekday = loadFirst(t.calendar, state.year, state.month)
-    render()
+    persistSheet()
+    setConfig({ year: +e.target.value })
   }
 
   app.querySelector('[name=locale]').onchange = (e) => {
-    persistSheet(t.calendar, state.year, state.month)
-    const next = localeOf(e.target.value)
-    const d = dateAt(state.year, state.month, 1, t.calendar)
-    const p = readCal(d, next.calendar)
-    state.locale = e.target.value
-    state.year = p.year
-    state.month = p.month - 1
-    state.firstWeekday = loadFirst(next.calendar, state.year, state.month)
-    localStorage.setItem(localeKey, state.locale)
-    render()
+    persistSheet()
+    setConfig({ locale: e.target.value })
   }
 
   app.querySelector('[name=theme]').onchange = (e) => {
-    state.theme = e.target.value
-    localStorage.setItem(themeKey, state.theme)
-    applyTheme(state.theme)
+    setConfig({ theme: e.target.value }, { render: false })
   }
 
   app.querySelector('.first').onclick = (e) => {
     const btn = e.target.closest('[data-day]')
     if (!btn) return
-    persistSheet(t.calendar, state.year, state.month)
-    state.firstWeekday = +btn.dataset.day
-    saveFirst(t.calendar, state.year, state.month, state.firstWeekday)
-    render()
+    persistSheet()
+    setConfig({
+      firstDays: {
+        ...config.firstDays,
+        [viewId(config)]: +btn.dataset.day,
+      },
+    })
   }
 
   app.querySelector('[name=print]').onclick = () => {
@@ -366,21 +361,18 @@ const render = () => {
   }
 
   app.querySelector('[name=save]').onclick = () => {
-    state.employee = emp.value
-    localStorage.setItem(employeeKey, state.employee)
-    persistSheet(t.calendar, state.year, state.month)
+    setConfig({ employee: emp.value }, { render: false })
+    persistSheet()
     downloadJson(
-      backupName(state.employee, t.months[state.month], state.year),
-      dumpStorage(),
+      backupName(config.employee, t.months[config.month], config.year),
+      config,
     )
   }
 
   app.querySelector('[name=clear]').onclick = () => {
     for (const el of sheet.querySelectorAll('input[name]')) el.value = ''
     emp.value = ''
-    state.employee = ''
-    localStorage.setItem(employeeKey, '')
-    storeSheet(t.calendar, {})
+    setConfig({ employee: '', sheet: {} }, { render: false })
     syncMeta()
     syncTotal()
   }
@@ -393,9 +385,9 @@ const render = () => {
     if (!file) return
     file.text().then((text) => {
       const data = JSON.parse(text)
-      if (!restoreStorage(data)) return
-      syncStateFromStorage()
-      render()
+      const imported = importConfig(data)
+      if (!imported) return
+      setConfig(imported, { convertLocale: false })
     }).catch(() => {})
   }
 }

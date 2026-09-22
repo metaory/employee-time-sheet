@@ -170,8 +170,11 @@ export const formatHm = (minutes) => {
 }
 
 const HM = '00:00'
-const hmSelect = (el, minutes = false) =>
-  el.setSelectionRange(minutes ? 3 : 0, minutes ? 5 : 2)
+const hmOffset = (el) => +el.value.startsWith('-')
+const hmSelect = (el, minutes = false) => {
+  const start = hmOffset(el) + (minutes ? 3 : 0)
+  el.setSelectionRange(start, start + 2)
+}
 
 /** Minutes → zero-padded ASCII HH:MM. */
 export const formatHmPad = (minutes) => {
@@ -181,53 +184,62 @@ export const formatHmPad = (minutes) => {
   return n < 0 ? `-${body}` : body
 }
 
-const hmValue = (value) => {
+const hmValue = (value, signed) => {
   if (value === '-') return value
   const minutes = parseHm(value)
-  return minutes == null || minutes < 0 || minutes > 5999
+  return minutes == null || Math.abs(minutes) > 5999 || (!signed && minutes < 0)
     ? ''
     : formatHmPad(minutes)
 }
 
 /** Bind segmented HH:MM editing with `-` as an off-day marker. */
-export const bindHmInput = (el, { onChange, onBlur, blank = false } = {}) => {
+export const bindHmInput = (
+  el,
+  { onChange, onBlur, blank = false, signed = false } = {},
+) => {
   const change = () => onChange?.()
   const select = (minutes) => hmSelect(el, minutes)
   const empty = () => !el.value.trim()
 
-  el.maxLength = 5
+  el.maxLength = signed ? 6 : 5
   el.onfocus = () => {
-    el.value = hmValue(el.value)
+    el.value = hmValue(el.value, signed)
     if (blank && empty()) return
     if (!el.value) el.value = HM
     el.value === '-' ? el.select() : select(false)
   }
   el.onclick = () => {
     if (blank && empty()) return
-    const minutes = (el.selectionStart ?? 0) >= 3
+    const minutes = (el.selectionStart ?? 0) >= hmOffset(el) + 3
     setTimeout(() => el.value === '-' ? el.select() : select(minutes))
   }
   el.onkeydown = (event) => {
     if (event.key === '-') {
       event.preventDefault()
-      el.value = '-'
-      el.select()
+      const minutes = parseHm(el.value)
+      el.value = !signed || el.value === '-' || !minutes
+        ? '-'
+        : formatHmPad(-minutes)
+      el.value === '-' ? el.select() : select(false)
       change()
       return
     }
     if (/^\d$/.test(event.key)) {
       event.preventDefault()
       const wasDash = el.value === '-'
-      if (!/^\d{2}:\d{2}$/.test(el.value)) {
-        el.value = HM
+      if (!/^-?\d{2}:\d{2}$/.test(el.value)) {
+        el.value = wasDash && signed ? `-${HM}` : HM
         select(false)
       }
       const start = el.selectionStart ?? 0
+      const offset = hmOffset(el)
       const pos = wasDash
-        ? 1
-        : start < 3 ? Math.min(start, 1) : Math.min(Math.max(start, 3), 4)
+        ? offset + 1
+        : start < offset + 3
+          ? Math.min(Math.max(start, offset), offset + 1)
+          : Math.min(Math.max(start, offset + 3), offset + 4)
       el.value = `${el.value.slice(0, pos)}${event.key}${el.value.slice(pos + 1)}`
-      if (wasDash || pos === 1) select(true)
+      if (wasDash || pos === offset + 1) select(true)
       else el.setSelectionRange(pos + 1, pos + 1)
       change()
       return
@@ -259,12 +271,13 @@ export const bindHmInput = (el, { onChange, onBlur, blank = false } = {}) => {
       const start = el.selectionStart ?? 0
       const end = el.selectionEnd ?? start
       const at = event.key === 'Backspace' && start === end ? start - 1 : start
-      const positions = [0, 1, 3, 4].filter((pos) =>
+      const offset = hmOffset(el)
+      const positions = [0, 1, 3, 4].map((pos) => pos + offset).filter((pos) =>
         start === end ? pos === Math.max(0, at) : pos >= start && pos < end)
       el.value = [...el.value]
         .map((char, pos) => positions.includes(pos) ? '0' : char)
         .join('')
-      select(start >= 3)
+      select(start >= offset + 3)
       change()
       return
     }
@@ -273,7 +286,7 @@ export const bindHmInput = (el, { onChange, onBlur, blank = false } = {}) => {
     }
   }
   el.onblur = () => {
-    el.value = hmValue(el.value)
+    el.value = hmValue(el.value, signed)
     change()
     onBlur?.()
   }

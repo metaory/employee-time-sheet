@@ -82,6 +82,7 @@ body {
 
   input, select {
     font: inherit;
+    font-weight: 700;
     color: var(--ink);
     border: 1px solid var(--line);
     border-radius: calc(var(--radius) - 4px);
@@ -101,6 +102,7 @@ body {
 
   .print, .tool {
     font: inherit;
+    font-weight: 700;
     border: 2px solid var(--navy);
     border-radius: calc(var(--radius) - 4px);
     background: var(--navy);
@@ -167,6 +169,7 @@ body {
 
     button {
       font: inherit;
+      font-weight: 700;
       color: var(--ink);
       border: 0;
       border-inline-end: 1px solid var(--line);

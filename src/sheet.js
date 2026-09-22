@@ -190,16 +190,20 @@ const hmValue = (value) => {
 }
 
 /** Bind segmented HH:MM editing with `-` as an off-day marker. */
-export const bindHmInput = (el, { onChange, onBlur } = {}) => {
+export const bindHmInput = (el, { onChange, onBlur, blank = false } = {}) => {
   const change = () => onChange?.()
   const select = (minutes) => hmSelect(el, minutes)
+  const empty = () => !el.value.trim()
 
   el.maxLength = 5
   el.onfocus = () => {
-    el.value = hmValue(el.value) || HM
+    el.value = hmValue(el.value)
+    if (blank && empty()) return
+    if (!el.value) el.value = HM
     el.value === '-' ? el.select() : select(false)
   }
   el.onclick = () => {
+    if (blank && empty()) return
     const minutes = (el.selectionStart ?? 0) >= 3
     setTimeout(() => el.value === '-' ? el.select() : select(minutes))
   }
@@ -229,6 +233,7 @@ export const bindHmInput = (el, { onChange, onBlur } = {}) => {
       return
     }
     if (event.key === 'Tab' && el.value !== '-') {
+      if (blank && empty()) return
       const minutes = (el.selectionStart ?? 0) >= 3
       if ((!event.shiftKey && minutes) || (event.shiftKey && !minutes)) return
       event.preventDefault()
@@ -238,11 +243,13 @@ export const bindHmInput = (el, { onChange, onBlur } = {}) => {
     }
     if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight')
       && el.value !== '-') {
+      if (blank && empty()) return
       event.preventDefault()
       select(event.key === 'ArrowRight')
       return
     }
     if (event.key === 'Backspace' || event.key === 'Delete') {
+      if (blank && empty()) return
       event.preventDefault()
       if (el.value === '-') {
         el.value = ''

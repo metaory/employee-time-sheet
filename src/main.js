@@ -32,7 +32,6 @@ const defaultConfig = (locale = 'en') => ({
   locale,
   theme: systemTheme(),
   employee: '',
-  startHour: '',
   ...todayParts(localeOf(locale).calendar),
   firstDays: {},
   sheet: {},
@@ -45,7 +44,6 @@ const normalizeConfig = (data = {}) => {
     locale,
     theme: data.theme === 'dark' || data.theme === 'light' ? data.theme : base.theme,
     employee: String(data.employee ?? ''),
-    startHour: String(data.startHour ?? ''),
     year: Number.isInteger(data.year) ? data.year : base.year,
     month: Number.isInteger(data.month) ? data.month : base.month,
     firstDays: data.firstDays && typeof data.firstDays === 'object'
@@ -114,15 +112,16 @@ const applyStartHour = (hour) => {
   if (mins == null || mins < 0) return
 
   const sheet = document.querySelector('#app .sheet')
-  const current = cleanSheet({ ...config.sheet, ...(sheet ? dumpSheet(sheet) : {}) })
+  if (!sheet) return
+
+  const current = cleanSheet({ ...config.sheet, ...dumpSheet(sheet) })
   const next = formatHmPad(mins)
   const updated = { ...current }
   let changed = false
 
-  for (const [name, value] of Object.entries(current)) {
-    if (!name.startsWith('start-') || value === '-' || parseHm(value) == null) continue
-    if (value === next) continue
-    updated[name] = next
+  for (const el of sheet.querySelectorAll('input[name^="start-"]')) {
+    if (el.value === '-' || el.value === next) continue
+    updated[el.name] = next
     changed = true
   }
   if (!changed) return
@@ -297,8 +296,11 @@ const render = () => {
 
   const syncMeta = () => {
     meta.replaceChildren(
-      ...[`${t.months[config.month]} ${t.digit(config.year)}`, config.employee]
-        .filter(Boolean)
+      ...[
+        `${t.employee}: ${config.employee}`,
+        `${t.month}: ${t.months[config.month]}`,
+        `${t.year}: ${t.digit(config.year)}`,
+      ]
         .map((text) => Object.assign(document.createElement('span'), { textContent: text })),
     )
   }
@@ -306,7 +308,6 @@ const render = () => {
   const saveFields = () => persistSheet()
 
   emp.value = config.employee
-  startHourEl.value = config.startHour
   emp.onclick = () => {
     if (emp.value) emp.select()
   }
@@ -316,7 +317,7 @@ const render = () => {
   }
 
   bindHmInput(startHourEl, {
-    onChange: () => setConfig({ startHour: startHourEl.value }, { render: false }),
+    blank: true,
     onBlur: () => applyStartHour(startHourEl.value),
   })
 
@@ -329,6 +330,10 @@ const render = () => {
 
   syncMeta()
   syncTotal()
+  window.onbeforeprint = () => {
+    syncMeta()
+    syncTotal()
+  }
 
   sheet.onkeydown = (e) => {
     if (e.key !== 'Tab' || !e.target.matches('input[name]')) return
@@ -380,11 +385,7 @@ const render = () => {
     })
   }
 
-  app.querySelector('[name=print]').onclick = () => {
-    syncMeta()
-    syncTotal()
-    print()
-  }
+  app.querySelector('[name=print]').onclick = () => window.print()
 
   app.querySelector('[name=save]').onclick = () => {
     persistSheet()

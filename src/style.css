@@ -223,7 +223,7 @@ body {
 
   th:nth-child(5n + 1),
   td:nth-child(5n + 1) {
-    width: 70px;
+    width: 6%;
     white-space: nowrap;
   }
 
@@ -233,12 +233,12 @@ body {
   td:nth-child(5n + 3),
   th:nth-child(5n + 4),
   td:nth-child(5n + 4) {
-    width: 80px;
+    width: 7%;
   }
 
   th:nth-child(5n + 5),
   td:nth-child(5n + 5) {
-    width: auto;
+    width: 23%;
   }
 
   th:nth-child(5),
@@ -384,6 +384,7 @@ body {
     color: #000;
     direction: inherit;
     font-size: 10pt;
+    font-weight: 400;
 
     span {
       white-space: nowrap;
@@ -391,12 +392,17 @@ body {
       &:nth-child(2) { text-align: center }
       &:last-child { text-align: end }
     }
+
+    strong {
+      font-size: 12pt;
+      font-weight: 800;
+    }
   }
 
   .sheet {
     height: auto;
     overflow: visible;
-    table-layout: fixed;
+    table-layout: auto;
     border: 1px solid #000;
     background: #fff;
     color: #000;
@@ -419,17 +425,8 @@ body {
 
     th:nth-child(5n + 1),
     td:nth-child(5n + 1) {
-      width: 70px;
+      width: max-content;
       white-space: nowrap;
-    }
-
-    th:nth-child(5n + 2),
-    td:nth-child(5n + 2),
-    th:nth-child(5n + 3),
-    td:nth-child(5n + 3),
-    th:nth-child(5n + 4),
-    td:nth-child(5n + 4) {
-      width: 80px;
     }
 
     th:nth-child(5n + 5),
@@ -480,13 +477,16 @@ body {
     background: #fff;
     color: #000;
     break-inside: avoid;
+    font-weight: 400;
 
-    span, strong {
-      color: #000;
-      font-weight: 700;
-    }
+    span, strong { color: #000 }
 
     span { font-size: 10pt }
-    strong { font-size: 11pt }
+
+    strong {
+      font-size: 12pt;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
   }
 }

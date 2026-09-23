@@ -304,13 +304,16 @@ const render = () => {
   }
 
   const syncMeta = () => {
+    const item = (label, value) => {
+      const span = document.createElement('span')
+      span.append(`${label}: `)
+      span.append(Object.assign(document.createElement('strong'), { textContent: value }))
+      return span
+    }
     meta.replaceChildren(
-      ...[
-        `${t.employee}: ${config.employee}`,
-        `${t.month}: ${t.months[config.month]}`,
-        `${t.year}: ${t.digit(config.year)}`,
-      ]
-        .map((text) => Object.assign(document.createElement('span'), { textContent: text })),
+      item(t.employee, config.employee),
+      item(t.month, t.months[config.month]),
+      item(t.year, t.digit(config.year)),
     )
   }
 

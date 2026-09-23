@@ -139,18 +139,14 @@ export const splitRows = (days) => {
   return right.map((r, i) => ({ right: r, left: left[i] ?? null }))
 }
 
-const hmNorm = (str) => String(str ?? '')
-  .trim()
-  .replace(/\u200e|\u200f|\ufeff/g, '')
-  .replace(/[−–—]/g, '-')
-  .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
-  .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
-
-const isDigit = (c) => /^\d$/.test(c)
-
 /** Parse H:MM, H.MM, or bare minutes → signed total minutes. */
 export const parseHm = (str) => {
-  const s = hmNorm(str)
+  const s = String(str ?? '')
+    .trim()
+    .replace(/\u200e|\u200f|\ufeff/g, '')
+    .replace(/[−–—]/g, '-')
+    .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
   if (!s) return null
   const sign = s.startsWith('-') ? -1 : 1
   const body = s.replace(/^[+-]/, '')
@@ -163,17 +159,6 @@ export const parseHm = (str) => {
   }
   if (/^\d{1,4}$/.test(body)) return sign * +body
   return null
-}
-
-/** Signed free text (not time, not lone `-`). Excluded from extra total. */
-const isExtraNote = (str) => {
-  const s = hmNorm(str)
-  return s !== '' && s !== '-' && parseHm(s) == null
-}
-
-const noteText = (str) => {
-  const s = hmNorm(str)
-  return s[0] === '-' && s.length > 1 && !isDigit(s[1]) ? s.slice(1) : s
 }
 
 /** Minutes → ASCII H:MM (optional leading -). */
@@ -201,16 +186,10 @@ export const formatHmPad = (minutes) => {
 
 const hmValue = (value, signed) => {
   if (value === '-') return value
-  if (signed && isExtraNote(value)) return noteText(value)
   const minutes = parseHm(value)
   return minutes == null || Math.abs(minutes) > 5999 || (!signed && minutes < 0)
     ? ''
     : formatHmPad(minutes)
-}
-
-const setHmMax = (el, signed) => {
-  if (!signed) el.maxLength = 5
-  else el.removeAttribute('maxlength')
 }
 
 /** Bind segmented HH:MM editing with `-` as an off-day marker. */
@@ -221,25 +200,20 @@ export const bindHmInput = (
   const change = () => onChange?.()
   const select = (minutes) => hmSelect(el, minutes)
   const empty = () => !el.value.trim()
-  const note = () => signed && isExtraNote(el.value)
 
-  setHmMax(el, signed)
-  el.oninput = () => note() && change()
+  el.maxLength = signed ? 6 : 5
   el.onfocus = () => {
-    if (note()) return
-    if (signed) el.maxLength = 6
     el.value = hmValue(el.value, signed)
     if (blank && empty()) return
     if (!el.value) el.value = HM
     el.value === '-' ? el.select() : select(false)
   }
   el.onclick = () => {
-    if (note() || (blank && empty())) return
+    if (blank && empty()) return
     const minutes = (el.selectionStart ?? 0) >= hmOffset(el) + 3
     setTimeout(() => el.value === '-' ? el.select() : select(minutes))
   }
   el.onkeydown = (event) => {
-    if (note()) return
     if (event.key === '-') {
       event.preventDefault()
       const minutes = parseHm(el.value)
@@ -308,20 +282,11 @@ export const bindHmInput = (
       return
     }
     if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      if (signed && el.value === '-' && !isDigit(event.key)) {
-        event.preventDefault()
-        el.removeAttribute('maxlength')
-        el.value = event.key
-        el.setSelectionRange(1, 1)
-        change()
-        return
-      }
       event.preventDefault()
     }
   }
   el.onblur = () => {
     el.value = hmValue(el.value, signed)
-    setHmMax(el, signed)
     change()
     onBlur?.()
   }

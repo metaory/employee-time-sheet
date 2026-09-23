@@ -145,7 +145,7 @@ const bankCells = (day, t) => day
   ? `<td class="date">${t.digit(day.day)} <span>${day.weekday}</span></td>
      <td><input type="text" name="start-${day.day}" autocomplete="off" maxlength="5" dir="ltr"></td>
      <td><input type="text" name="end-${day.day}" autocomplete="off" maxlength="5" dir="ltr"></td>
-     <td><input type="text" name="extra-${day.day}" autocomplete="off" dir="ltr"></td>`
+     <td><input type="text" name="extra-${day.day}" autocomplete="off" maxlength="6" dir="ltr"></td>`
   : `<td class="date pad"></td><td class="pad"></td><td class="pad"></td><td class="pad"></td>`
 
 const bankHead = (t) => t.cols.map((c) => `<th>${c}</th>`).join('')

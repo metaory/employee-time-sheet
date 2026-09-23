@@ -221,26 +221,28 @@ body {
     background: var(--navy);
   }
 
-  th:nth-child(4n + 1),
-  td:nth-child(4n + 1) {
+  th:nth-child(5n + 1),
+  td:nth-child(5n + 1) {
     width: 70px;
     white-space: nowrap;
   }
 
-  th:nth-child(4n + 2),
-  td:nth-child(4n + 2),
-  th:nth-child(4n + 3),
-  td:nth-child(4n + 3) {
+  th:nth-child(5n + 2),
+  td:nth-child(5n + 2),
+  th:nth-child(5n + 3),
+  td:nth-child(5n + 3),
+  th:nth-child(5n + 4),
+  td:nth-child(5n + 4) {
     width: 80px;
   }
 
-  th:nth-child(4n + 4),
-  td:nth-child(4n + 4) {
+  th:nth-child(5n + 5),
+  td:nth-child(5n + 5) {
     width: auto;
   }
 
-  th:nth-child(4),
-  td:nth-child(4) {
+  th:nth-child(5),
+  td:nth-child(5) {
     border-inline-end: 4px double var(--line);
   }
 
@@ -273,6 +275,12 @@ body {
     &[name^=start-],
     &[name^=end-],
     &[name^=extra-] { width: 100% }
+
+    &[name^=notes-] {
+      width: 100%;
+      text-align: center;
+      font-variant-numeric: normal;
+    }
   }
 
   tbody tr { background: var(--row) }
@@ -409,26 +417,28 @@ body {
 
     tbody td { height: 13mm }
 
-    th:nth-child(4n + 1),
-    td:nth-child(4n + 1) {
+    th:nth-child(5n + 1),
+    td:nth-child(5n + 1) {
       width: 70px;
       white-space: nowrap;
     }
 
-    th:nth-child(4n + 2),
-    td:nth-child(4n + 2),
-    th:nth-child(4n + 3),
-    td:nth-child(4n + 3) {
+    th:nth-child(5n + 2),
+    td:nth-child(5n + 2),
+    th:nth-child(5n + 3),
+    td:nth-child(5n + 3),
+    th:nth-child(5n + 4),
+    td:nth-child(5n + 4) {
       width: 80px;
     }
 
-    th:nth-child(4n + 4),
-    td:nth-child(4n + 4) {
+    th:nth-child(5n + 5),
+    td:nth-child(5n + 5) {
       width: auto;
     }
 
-    th:nth-child(4),
-    td:nth-child(4) {
+    th:nth-child(5),
+    td:nth-child(5) {
       border-inline-end: 2px double #000;
     }
 
@@ -455,6 +465,12 @@ body {
       &[name^=start-],
       &[name^=end-],
       &[name^=extra-] { width: 100% }
+
+      &[name^=notes-] {
+        width: 100%;
+        text-align: center;
+        font-variant-numeric: normal;
+      }
     }
   }
 

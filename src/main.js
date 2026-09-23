@@ -20,13 +20,19 @@ const viewId = ({ year, month }) => `${year}-${month}`
 const systemTheme = () =>
   matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 
+const sheetField = /^(start|end|extra|notes)-(\d+)$/
+
 const dumpSheet = (root) =>
   Object.fromEntries(
-    [...root.querySelectorAll('input[name]')].map((el) => [el.name, el.value]),
+    [...root.querySelectorAll('input[name]')]
+      .filter((el) => sheetField.test(el.name))
+      .map((el) => [el.name, el.value]),
   )
 
 const cleanSheet = (sheet) =>
-  Object.fromEntries(Object.entries(sheet).filter(([, value]) => value))
+  Object.fromEntries(
+    Object.entries(sheet).filter(([key, value]) => value && sheetField.test(key)),
+  )
 
 const defaultConfig = (locale = 'en') => ({
   locale,
@@ -145,20 +151,23 @@ const bankCells = (day, t) => day
   ? `<td class="date">${t.digit(day.day)} <span>${day.weekday}</span></td>
      <td><input type="text" name="start-${day.day}" autocomplete="off" maxlength="5" dir="ltr"></td>
      <td><input type="text" name="end-${day.day}" autocomplete="off" maxlength="5" dir="ltr"></td>
-     <td><input type="text" name="extra-${day.day}" autocomplete="off" maxlength="6" dir="ltr"></td>`
-  : `<td class="date pad"></td><td class="pad"></td><td class="pad"></td><td class="pad"></td>`
+     <td><input type="text" name="extra-${day.day}" autocomplete="off" maxlength="6" dir="ltr"></td>
+     <td><input type="text" name="notes-${day.day}" autocomplete="off"></td>`
+  : `<td class="date pad"></td><td class="pad"></td><td class="pad"></td><td class="pad"></td><td class="pad"></td>`
 
 const bankHead = (t) => t.cols.map((c) => `<th>${c}</th>`).join('')
 
 const showHm = (minutes, digit) =>
   formatHm(minutes).replace(/\d/g, (d) => digit(+d))
 
-const fieldRank = { start: 0, end: 1, extra: 2 }
+const fieldRank = { start: 0, end: 1, extra: 2, notes: 3 }
 
 const dayInputs = (sheet) =>
-  [...sheet.querySelectorAll('input[name]')].sort((a, b) => {
-    const pa = a.name.match(/^(start|end|extra)-(\d+)$/)
-    const pb = b.name.match(/^(start|end|extra)-(\d+)$/)
+  [...sheet.querySelectorAll(
+    'input[name^="start-"], input[name^="end-"], input[name^="extra-"], input[name^="notes-"]',
+  )].sort((a, b) => {
+    const pa = a.name.match(sheetField)
+    const pb = b.name.match(sheetField)
     return +pa[2] - +pb[2] || fieldRank[pa[1]] - fieldRank[pb[1]]
   })
 
@@ -346,6 +355,10 @@ const render = () => {
   }
 
   for (const el of inputs) {
+    if (el.name.startsWith('notes-')) {
+      el.oninput = saveFields
+      continue
+    }
     bindHmInput(el, {
       signed: el.name.startsWith('extra-'),
       onChange: () => {

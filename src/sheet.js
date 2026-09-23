@@ -22,7 +22,7 @@ const UI = {
     theme: 'Theme',
     light: 'Light',
     dark: 'Dark',
-    cols: ['date', 'start', 'end', 'extra'],
+    cols: ['date', 'start', 'end', 'extra', 'notes'],
   },
   fa: {
     tag: 'fa-IR',
@@ -45,7 +45,7 @@ const UI = {
     theme: 'نما',
     light: 'روشن',
     dark: 'تیره',
-    cols: ['تاریخ', 'شروع', 'پایان', 'اضافه'],
+    cols: ['تاریخ', 'شروع', 'پایان', 'اضافه', 'یادداشت'],
   },
 }
 
@@ -258,6 +258,13 @@ export const bindHmInput = (
       if (blank && empty()) return
       event.preventDefault()
       select(event.key === 'ArrowRight')
+      return
+    }
+    if (event.key === 'Delete' && !blank) {
+      event.preventDefault()
+      el.value = HM
+      select(false)
+      change()
       return
     }
     if (event.key === 'Backspace' || event.key === 'Delete') {

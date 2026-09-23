@@ -49,6 +49,11 @@
 
 *, *::before, *::after { box-sizing: border-box; box-shadow: none }
 
+::selection {
+  background: #c45a00;
+  color: #000;
+}
+
 body {
   margin: 0;
   min-height: 100dvh;

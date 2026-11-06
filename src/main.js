@@ -191,6 +191,13 @@ const dateStamp = (year, month) => {
 const backupName = (name, year, month) =>
   `${nospace(name) || 'timesheet'}_${dateStamp(year, month)}.json`
 
+const extraTotal = (sheet) => formatHmPad(
+  Object.entries(sheet).reduce(
+    (sum, [key, value]) => sum + (key.startsWith('extra-') ? parseHm(value) ?? 0 : 0),
+    0,
+  ),
+)
+
 const downloadJson = (filename, data) => {
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -408,7 +415,10 @@ const render = () => {
     persistSheet()
     const name = prompt('Name')
     if (name == null) return
-    downloadJson(backupName(name, config.year, config.month), config)
+    downloadJson(backupName(name, config.year, config.month), {
+      ...config,
+      totalExtra: extraTotal(config.sheet),
+    })
   }
 
   app.querySelector('[name=clear]').onclick = () => {
